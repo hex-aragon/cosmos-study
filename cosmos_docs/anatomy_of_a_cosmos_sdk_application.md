@@ -541,5 +541,239 @@ app.finalizeBlockState.ctx = app.finalizeBlockState.ctx.WithConsensusParams(app.
 
 - 코스모스 SDK는 개발자가 애플리케이션의 일부로 코드 자동 실행을 구현할 수 있는 기능을 제공합니다. 이는 BeginBlocker와 EndBlocker라는 두 함수를 통해 구현됩니다. 이 함수는 애플리케이션이 각 블록의 시작과 끝에서 각각 발생하는 CometBFT 합의 엔진으로부터 FinalizeBlock 메시지를 수신할 때 호출됩니다. 애플리케이션은 생성자에서 SetBeginBlocker 및 SetEndBlocker 메서드를 통해 BeginBlocker와 EndBlocker를 설정해야 합니다.
 
+- 일반적으로 BeginBlocker 및 EndBlocker 함수는 대부분 애플리케이션의 각 모듈의 BeginBlock 및 EndBlock 함수로 구성됩니다. 이는 모듈 관리자의 BeginBlock 및 EndBlock 함수를 호출하고, 이 함수는 다시 포함된 각 모듈의 BeginBlock 및 EndBlock 함수를 호출하는 방식으로 이루어집니다. 모듈의 BeginBlock 및 EndBlock 함수를 호출해야 하는 순서는 모듈 관리자에서 각각 SetOrderBeginBlockers 및 SetOrderEndBlockers 메서드를 사용하여 설정해야 합니다. 이 작업은 애플리케이션의 생성자에서 모듈 관리자를 통해 수행되며, SetBeginBlocker 및 SetEndBlocker 함수보다 먼저 SetOrderBeginBlockers 및 SetOrderEndBlockers 메서드를 호출해야 합니다.
 
-- 
+- 여담으로, 애플리케이션별 블록체인은 결정론적이라는 점을 기억하는 것이 중요합니다. 개발자는 비긴블록커나 엔드블록커에 비결정성을 도입하지 않도록 주의해야 하며, 가스가 비긴블록커와 엔드블록커 실행 비용을 제약하지 않기 때문에 계산 비용이 너무 많이 들지 않도록 주의해야 합니다. simapp의 비긴블록커와 엔드블록커 함수 예시를 참조하세요.
+
+```
+simapp/app.go
+func (app *SimApp) BeginBlocker(ctx sdk.Context) (sdk.BeginBlock, error) {
+	return app.ModuleManager.BeginBlock(ctx)
+}
+
+// EndBlocker application updates every end block
+func (app *SimApp) EndBlocker(ctx sdk.Context) (sdk.EndBlock, error) {
+	return app.ModuleManager.EndBlock(ctx)
+}
+```
+
+link : https://github.com/cosmos/cosmos-sdk/blob/v0.50.0-alpha.0/simapp/app.go#L613-L620
+
+# Register Codec
+
+- EncodingConfig 구조는 app.go 파일의 마지막 중요한 부분입니다. 이 구조의 목표는 앱 전체에서 사용될 코덱을 정의하는 것입니다.
+
+```
+simapp/params/encoding.go
+// EncodingConfig specifies the concrete encoding types to use for a given app.
+// This is provided for compatibility between protobuf and amino implementations.
+type EncodingConfig struct {
+	InterfaceRegistry types.InterfaceRegistry
+	Codec             codec.Codec
+	TxConfig          client.TxConfig
+	Amino             *codec.LegacyAmino
+}
+```
+
+다음은 네 가지 필드 각각에 대한 설명입니다:
+
+- 인터페이스 레지스트리: InterfaceRegistry는 Protobuf 코덱에서 google.protobuf.Any를 사용하여 인코딩 및 디코딩(우리는 "언패킹"이라고도 함)되는 인터페이스를 처리하는 데 사용됩니다. Any는 type_url(인터페이스를 구현하는 구체적인 타입의 이름)과 value(인코딩된 바이트)를 포함하는 구조체로 생각할 수 있습니다. InterfaceRegistry는 Any에서 안전하게 언패킹할 수 있는 인터페이스와 구현을 등록하는 메커니즘을 제공합니다. 각 애플리케이션 모듈은 모듈의 자체 인터페이스 및 구현을 등록하는 데 사용할 수 있는 RegisterInterfaces 메서드를 구현합니다. Any에 대한 자세한 내용은 ADR-019에서 확인할 수 있습니다. 더 자세히 살펴보기 위해 Cosmos SDK는 gogoprotobuf라는 Protobuf 사양의 구현을 사용합니다. 기본적으로 Any의 gogo protobuf 구현은 전역 유형 등록을 사용하여 Any에 패킹된 값을 구체적인 Go 유형으로 디코딩합니다. 이로 인해 종속성 트리의 악의적인 모듈이 글로벌 protobuf 레지스트리에 유형을 등록하여 type_url 필드에서 해당 유형을 참조한 트랜잭션에 의해 로드 및 마샬링 해제될 수 있는 취약점이 발생하게 됩니다.
+
+* 자세한 내용은 ADR-019를 참조하십시오.
+  ADR-019 : https://docs.cosmos.network/v0.50/build/architecture/adr-019-protobuf-state-encoding
+  google.protobuf.Any : https://github.com/protocolbuffers/protobuf/blob/main/src/google/protobuf/any.proto
+  gogoprotobuf : https://github.com/cosmos/gogoproto
+  gogoprotobuf implement : https://pkg.go.dev/github.com/cosmos/gogoproto/types
+
+- 코덱: 코스모스 SDK 전체에서 사용되는 기본 코덱입니다. 상태를 인코딩 및 디코딩하는 데 사용되는 BinaryCodec과 사용자에게 데이터를 출력하는 데 사용되는 JSONCodec으로 구성됩니다(예: CLI에서). 기본적으로 SDK는 Protobuf를 코덱으로 사용합니다.
+
+- TxConfig: TxConfig는 클라이언트가 애플리케이션이 정의한 구체적인 트랜잭션 유형을 생성하는 데 활용할 수 있는 인터페이스를 정의합니다. 현재 SDK는 두 가지 트랜잭션 유형을 처리합니다: SIGN_MODE_DIRECT(무선 인코딩으로 Protobuf 바이너리를 사용)와 SIGN_MODE_LEGACY_AMINO_JSON(Amino에 의존)입니다. 트랜잭션에 대한 자세한 내용은 여기를 참조하세요.
+
+- 아미노: 이전 버전과의 호환성을 위해 코스모스 SDK의 일부 레거시 부분은 여전히 아미노를 사용합니다. 각 모듈은 Amino 내에서 모듈의 특정 유형을 등록하기 위해 RegisterLegacyAmino 메서드를 노출합니다. 이 아미노 코덱은 앱 개발자가 더 이상 사용해서는 안 되며, 향후 릴리스에서 제거될 예정입니다.
+
+애플리케이션은 자체 인코딩 구성을 생성해야 합니다. 심앱의 심앱파람스.인코딩설정 예시를 참조하세요:
+
+```
+simapp/params/encoding.go
+type EncodingConfig struct {
+	InterfaceRegistry types.InterfaceRegistry
+	Codec             codec.Codec
+	TxConfig          client.TxConfig
+	Amino             *codec.LegacyAmino
+}
+
+
+```
+
+link : https://github.com/cosmos/cosmos-sdk/blob/v0.50.0-alpha.0/simapp/params/encoding.go#L11-L16
+
+# Modules
+
+- 모듈은 코스모스 SDK 애플리케이션의 핵심이자 영혼입니다. 모듈은 스테이트 머신 내에 중첩된 스테이트 머신으로 간주할 수 있습니다. 트랜잭션이 기본 CometBFT 엔진에서 ABCI를 통해 애플리케이션으로 전달되면, 베이스앱은 이를 처리하기 위해 적절한 모듈로 라우팅합니다. 이 패러다임에서는 개발자가 필요로 하는 대부분의 모듈이 이미 존재하는 경우가 많기 때문에 복잡한 상태 머신을 쉽게 구축할 수 있습니다. 개발자의 경우 코스모스 SDK 애플리케이션 구축과 관련된 대부분의 작업은 아직 존재하지 않는 애플리케이션에 필요한 사용자 지정 모듈을 구축하고 이미 존재하는 모듈과 통합하여 하나의 일관된 애플리케이션으로 만드는 것입니다. 애플리케이션 디렉토리에서 표준 관행은 x/ 폴더에 모듈을 저장하는 것입니다(이미 빌드된 모듈이 있는 Cosmos SDK의 x/ 폴더와 혼동하지 마세요).
+
+## Application Module Interface
+
+- 모듈은 코스모스 SDK에 정의된 인터페이스인 AppModuleBasic과 AppModule을 구현해야 합니다. 전자는 코덱과 같이 모듈의 기본 비종속 요소를 구현하고, 후자는 대부분의 모듈 메서드(다른 모듈의 키퍼에 대한 참조가 필요한 메서드 포함)를 처리합니다. AppModule과 AppModuleBasic 유형은 모두 관례에 따라 module.go라는 파일에 정의됩니다. AppModule은 모듈을 일관된 애플리케이션으로 쉽게 구성할 수 있도록 모듈에 유용한 메서드 모음을 노출합니다. 이러한 메서드는 애플리케이션의 모듈 컬렉션을 관리하는 모듈 관리자에서 호출됩니다.
+
+## Msg Services
+
+- 각 애플리케이션 모듈은 메시지를 처리하는 Msg 서비스 1개와 쿼리를 처리하는 gRPC 쿼리 서비스 1개 등 두 개의 Protobuf 서비스를 정의합니다. 모듈을 상태 머신으로 간주하면 Msg 서비스는 상태 전환 RPC 메서드의 집합입니다. 각 Protobuf Msg 서비스 메서드는 Protobuf 요청 유형과 1:1로 연결되며, 이 요청 유형은 반드시 sdk.Msg 인터페이스를 구현해야 합니다. sdk.Msgs는 트랜잭션에 번들로 제공되며 각 트랜잭션에는 하나 또는 여러 개의 메시지가 포함됩니다. 전체 노드에서 유효한 트랜잭션 블록을 수신하면 CometBFT는 DeliverTx를 통해 각 트랜잭션을 애플리케이션에 릴레이합니다. 그러면 애플리케이션이 트랜잭션을 처리합니다:
+
+* 트랜잭션을 수신하면 애플리케이션은 먼저 []바이트에서 마샬링을 해제합니다.
+
+* 그런 다음 수수료 지불 및 서명과 같은 트랜잭션에 대한 몇 가지 사항을 확인한 후 트랜잭션에 포함된 메시지를 추출합니다.
+
+* sdk.Msgs는 Protobuf Anys를 사용하여 인코딩됩니다. 각 Any의 type_url을 분석하여 baseapp의 msgServiceRouter는 sdk.Msg를 해당 모듈의 Msg 서비스로 라우팅합니다.
+
+* 메시지가 성공적으로 처리되면 상태가 업데이트됩니다.
+
+- 자세한 내용은 트랜잭션 수명 주기를 참조하세요. 모듈 개발자는 자체 모듈을 빌드할 때 사용자 정의 메시지 서비스를 만듭니다. 일반적인 방법은 tx.proto 파일에 Msg Protobuf 서비스를 정의하는 것입니다. 예를 들어, x/bank 모듈은 토큰을 전송하는 두 가지 메서드가 있는 서비스를 정의합니다:
+
+proto/cosmos/bank/v1beta1/tx.proto
+
+```
+// Msg defines the bank Msg service.
+service Msg {
+  option (cosmos.msg.v1.service) = true;
+
+  // Send defines a method for sending coins from one account to another account.
+  rpc Send(MsgSend) returns (MsgSendResponse);
+
+  // MultiSend defines a method for sending coins from some accounts to other accounts.
+  rpc MultiSend(MsgMultiSend) returns (MsgMultiSendResponse);
+
+  // UpdateParams defines a governance operation for updating the x/bank module parameters.
+  // The authority is defined in the keeper.
+  //
+  // Since: cosmos-sdk 0.47
+  rpc UpdateParams(MsgUpdateParams) returns (MsgUpdateParamsResponse);
+
+  // SetSendEnabled is a governance operation for setting the SendEnabled flag
+  // on any number of Denoms. Only the entries to add or update should be
+  // included. Entries that already exist in the store, but that aren't
+  // included in this message, will be left unchanged.
+  //
+  // Since: cosmos-sdk 0.47
+  rpc SetSendEnabled(MsgSetSendEnabled) returns (MsgSetSendEnabledResponse);
+}
+```
+
+link : https://github.com/cosmos/cosmos-sdk/blob/v0.50.0-alpha.0/proto/cosmos/bank/v1beta1/tx.proto#L13-L36
+
+서비스 메서드는 모듈 상태를 업데이트하기 위해 키퍼를 사용합니다. 각 모듈은 AppModule 인터페이스의 일부로 RegisterServices 메서드도 구현해야 합니다. 이 메서드는 생성된 Protobuf 코드에서 제공하는 RegisterMsgServer 함수를 호출해야 합니다.
+
+## gRPC Query Services
+
+- gRPC 쿼리 서비스를 사용하면 사용자가 gRPC를 사용하여 상태를 쿼리할 수 있습니다. 기본적으로 활성화되어 있으며 app.toml 내의 grpc.enable 및 grpc.address 필드에서 구성할 수 있습니다.
+
+* gRPC 쿼리 서비스는 모듈의 Protobuf 정의 파일, 특히 query.proto 내에 정의됩니다. query.proto 정의 파일은 단일 쿼리 Protobuf 서비스를 노출합니다. 각 gRPC 쿼리 엔드포인트는 쿼리 서비스 내부의 rpc 키워드로 시작하는 서비스 메서드에 해당합니다.
+
+* Protobuf는 모든 서비스 메서드를 포함하는 각 모듈에 대한 QueryServer 인터페이스를 생성합니다. 그런 다음 모듈의 키퍼는 각 서비스 메서드의 구체적인 구현을 제공함으로써 이 QueryServer 인터페이스를 구현해야 합니다. 이 구체적인 구현은 해당 gRPC 쿼리 엔드포인트의 핸들러입니다.
+
+* 마지막으로, 각 모듈은 AppModule 인터페이스의 일부로 RegisterServices 메서드도 구현해야 합니다. 이 메서드는 생성된 Protobuf 코드에서 제공하는 RegisterQueryServer 함수를 호출해야 합니다.
+
+## Keeper
+
+- 키퍼는 해당 모듈의 저장소를 관리하는 게이트키퍼입니다.
+
+- 모듈의 저장소를 읽거나 쓰려면 반드시 키퍼의 메서드 중 하나를 거쳐야 합니다. 이는 코스모스 SDK의 객체 기능 모델에 의해 보장됩니다. 스토어에 대한 키를 보유한 객체만 스토어에 액세스할 수 있으며, 모듈의 키퍼만 모듈의 스토어에 대한 키를 보유해야 합니다.
+
+- 키퍼는 일반적으로 keeper.go라는 파일에 정의됩니다. 이 파일에는 키퍼의 타입 정의와 메서드가 포함되어 있습니다. 키퍼 타입 정의는 일반적으로 다음과 같이 구성됩니다:
+
+유형 정의와 함께 keeper.go 파일의 다음 중요한 구성 요소는 키퍼의 생성자 함수인 NewKeeper입니다. 이 함수는 코덱을 사용하여 위에 정의된 유형의 새 키퍼를 인스턴스화하고 키를 저장하며 다른 모듈의 키퍼를 매개변수로 참조할 수 있습니다. NewKeeper 함수는 애플리케이션의 생성자에서 호출됩니다. 파일의 나머지 부분은 키퍼의 메서드를 정의하며, 주로 게터와 세터입니다.
+
+# Command-Line, gRPC Services and REST Interfaces
+
+- 각 모듈은 애플리케이션의 인터페이스를 통해 최종 사용자에게 노출되는 명령줄 명령, gRPC 서비스 및 REST 경로를 정의합니다. 이를 통해 최종 사용자는 모듈에 정의된 유형의 메시지를 만들거나 모듈에서 관리하는 상태의 하위 집합을 쿼리할 수 있습니다.
+
+## CLI
+
+- 일반적으로 모듈과 관련된 명령은 모듈의 폴더에 있는 client/cli라는 폴더에 정의됩니다. CLI는 명령을 트랜잭션과 쿼리라는 두 가지 범주로 나누며, 각각 client/cli/tx.go 및 client/cli/query.go에 정의되어 있습니다. 두 명령 모두 Cobra 라이브러리 위에 구축됩니다:
+
+* 트랜잭션 명령을 사용하면 사용자가 새 트랜잭션을 생성하여 블록에 포함시키고 최종적으로 상태를 업데이트할 수 있습니다. 모듈에 정의된 각 메시지 유형에 대해 하나의 명령을 만들어야 합니다. 이 명령은 최종 사용자가 제공한 매개변수로 메시지의 생성자를 호출하고 트랜잭션으로 래핑합니다. Cosmos SDK는 서명 및 기타 트랜잭션 메타데이터 추가를 처리합니다.
+
+* 쿼리는 사용자가 모듈에서 정의한 상태의 하위 집합을 쿼리할 수 있도록 합니다. 쿼리 명령은 애플리케이션의 쿼리 라우터로 쿼리를 전달하고, 쿼리 라우터는 제공된 쿼리 경로 매개변수에 따라 적절한 쿼리어로 쿼리를 라우팅합니다.
+
+## gRPC
+
+- gRPC는 여러 언어로 지원되는 최신 오픈소스 고성능 RPC 프레임워크입니다. 외부 클라이언트(예: 지갑, 브라우저, 기타 백엔드 서비스)가 노드와 상호 작용하는 데 권장되는 방식입니다. 각 모듈은 모듈의 Protobuf query.proto 파일에 정의된 서비스 메서드라고 하는 gRPC 엔드포인트를 노출할 수 있습니다. 서비스 메서드는 이름, 입력 인수, 출력 응답으로 정의됩니다. 그런 다음 모듈은 다음 작업을 수행해야 합니다:
+
+* 클라이언트 gRPC 요청을 모듈 내부의 올바른 핸들러에 연결하기 위해 AppModuleBasic에 RegisterGRPCGatewayRoutes 메서드를 정의합니다.
+
+* 각 서비스 메서드에 해당하는 핸들러를 정의합니다. 핸들러는 gRPC 요청을 처리하는 데 필요한 핵심 로직을 구현하며, keeper/grpc_query.go 파일에 위치합니다.
+
+## gRPC-gateway REST Endpoints
+
+- 일부 외부 클라이언트는 gRPC 사용을 원하지 않을 수 있습니다. 이 경우 코스모스 SDK는 각 gRPC 서비스를 해당 REST 엔드포인트로 노출하는 gRPC 게이트웨이 서비스를 제공합니다. 자세한 내용은 grpc-gateway 설명서를 참조하세요.
+
+- REST 엔드포인트는 Protobuf 어노테이션을 사용하여 gRPC 서비스와 함께 Protobuf 파일에 정의됩니다. REST 쿼리를 노출하려는 모듈은 rpc 메서드에 google.api.http 어노테이션을 추가해야 합니다. 기본적으로 SDK에 정의된 모든 REST 엔드포인트는 /cosmos/ 접두사로 시작하는 URL을 갖습니다.
+
+- Cosmos SDK는 이러한 REST 엔드포인트에 대한 Swagger 정의 파일을 생성하는 개발 엔드포인트도 제공합니다. 이 엔드포인트는 app.toml 구성 파일의 api.swagger 키 아래에서 활성화할 수 있습니다.
+
+# Application Interface
+
+- 인터페이스를 통해 최종 사용자는 풀노드 클라이언트와 상호작용할 수 있습니다. 즉, 풀노드에서 데이터를 쿼리하거나 풀노드가 릴레이하고 최종적으로 블록에 포함될 새 트랜잭션을 생성하여 전송할 수 있습니다. 주요 인터페이스는 명령줄 인터페이스입니다. 코스모스 SDK 애플리케이션의 CLI는 애플리케이션에서 사용하는 각 모듈에 정의된 CLI 명령을 모아 구축됩니다. 애플리케이션의 CLI는 데몬(예: 앱드)과 동일하며 앱드/main.go라는 파일에 정의됩니다. 이 파일에는 다음이 포함됩니다:
+
+* appd 인터페이스 클라이언트를 빌드하기 위해 실행되는 main() 함수입니다. 이 함수는 각 명령을 준비하여 빌드하기 전에 rootCmd에 추가합니다. 이 함수는 appd의 루트에서 status, keys, config와 같은 일반 명령, 쿼리 명령, tx 명령, rest-server와 같은 쿼리 명령을 추가합니다.
+
+* 쿼리 명령은 queryCmd 함수를 호출하여 추가합니다. 이 함수는 애플리케이션의 각 모듈에 정의된 쿼리 명령(main() 함수에서 sdk.ModuleClients 배열로 전달됨)과 블록 또는 유효성 검사기 쿼리와 같은 다른 하위 수준의 쿼리 명령이 포함된 Cobra 명령을 반환합니다. 쿼리 명령은 CLI의 앱드 쿼리 [쿼리] 명령을 사용하여 호출합니다.
+
+* 트랜잭션 명령은 txCmd 함수를 호출하여 추가합니다. 이 함수는 쿼리Cmd와 마찬가지로 각 애플리케이션의 모듈에 정의된 tx 명령과 트랜잭션 서명 또는 브로드캐스팅과 같은 하위 수준의 tx 명령이 포함된 코브라 명령을 반환합니다. tx 명령은 CLI의 appd tx [tx] 명령을 사용하여 호출합니다.
+
+코스모스 허브에서 애플리케이션의 기본 명령줄 파일 예시를 참조하세요.
+link : https://github.com/cosmos/gaia
+
+- cmd/gaiad/cmd/root.go
+
+```
+// NewRootCmd creates a new root command for simd. It is called once in the
+// main function.
+func NewRootCmd() (*cobra.Command, params.EncodingConfig) {
+	encodingConfig := gaia.MakeTestEncodingConfig()
+	initClientCtx := client.Context{}.
+		WithCodec(encodingConfig.Codec).
+		WithInterfaceRegistry(encodingConfig.InterfaceRegistry).
+		WithTxConfig(encodingConfig.TxConfig).
+		WithLegacyAmino(encodingConfig.Amino).
+		WithInput(os.Stdin).
+		WithAccountRetriever(types.AccountRetriever{}).
+		WithHomeDir(gaia.DefaultNodeHome).
+		WithViper("")
+
+	rootCmd := &cobra.Command{
+		Use:   "gaiad",
+		Short: "Stargate Cosmos Hub App",
+		PersistentPreRunE: func(cmd *cobra.Command, _ []string) error {
+			initClientCtx, err := client.ReadPersistentCommandFlags(initClientCtx, cmd.Flags())
+			if err != nil {
+				return err
+			}
+
+			initClientCtx, err = config.ReadFromClientConfig(initClientCtx)
+			if err != nil {
+				return err
+			}
+
+			if err = client.SetCmdClientContextHandler(initClientCtx, cmd); err != nil {
+				return err
+			}
+
+			customTemplate, customGaiaConfig := initAppConfig()
+			customTMConfig := initTendermintConfig()
+			return server.InterceptConfigsPreRunHandler(cmd, customTemplate, customGaiaConfig, customTMConfig)
+		},
+	}
+
+	initRootCmd(rootCmd, encodingConfig)
+
+	return rootCmd, encodingConfig
+}
+```
+
+# Dependencies and Makefile
+
+- 이 섹션은 개발자가 종속성 관리자와 프로젝트 빌드 방법을 자유롭게 선택할 수 있으므로 선택 사항입니다. 하지만 현재 버전 관리를 위해 가장 많이 사용되는 프레임워크는 go.mod입니다. 이 프레임워크는 애플리케이션 전체에서 사용되는 각 라이브러리를 올바른 버전으로 가져오도록 보장합니다. 다음은 예시로 제공되는 Cosmos Hub의 go.mod입니다.
+
+
+
+* 애플리케이션 빌드에는 일반적으로 메이크파일이 사용됩니다. 메이크파일은 주로 애플리케이션의 두 가지 엔트리포인트인 노드 클라이언트 및 애플리케이션 인터페이스를 빌드하기 전에 go.mod가 실행되도록 합니다. 다음은 코스모스 허브 메이크파일의 예시입니다.
