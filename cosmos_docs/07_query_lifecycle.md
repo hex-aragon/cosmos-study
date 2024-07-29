@@ -253,3 +253,142 @@ func (ctx Context) printOutput(out []byte) error {
 ```
 
 link : https://github.com/cosmos/cosmos-sdk/blob/v0.50.0-alpha.0/client/context.go#L341-L349
+
+클라이언트.컨텍스트의 주요 역할은 최종 사용자와 상호작용하는 동안 사용되는 데이터를 저장하고 이 데이터와 상호작용하는 메서드를 제공하는 것으로, 쿼리가 풀노드에서 처리되기 전후에 사용됩니다. 특히 MyQuery를 처리할 때 client.Context는 쿼리 매개변수를 인코딩하고, 풀 노드를 검색하고, 출력을 작성하는 데 활용됩니다. 풀 노드는 애플리케이션에 구애받지 않고 특정 유형을 이해하지 못하므로 풀 노드로 전달되기 전에 쿼리를 []바이트 형식으로 인코딩해야 합니다. 풀노드(RPC 클라이언트) 자체는 사용자 CLI가 연결된 노드를 알고 있는 client.Context를 사용하여 검색됩니다. 쿼리는 이 풀 노드로 전달되어 처리됩니다. 마지막으로, 클라이언트.컨텍스트에는 응답이 반환될 때 출력을 기록하는 Writer가 포함됩니다. 이러한 단계는 이후 섹션에서 자세히 설명합니다.
+
+### Arguments and Route Creation
+
+수명 주기의 이 시점에서 사용자는 쿼리에 포함하려는 모든 데이터가 포함된 CLI 명령을 만들었습니다. MyQuery의 나머지 여정을 지원하기 위해 client.Context가 존재합니다. 이제 다음 단계는 명령 또는 요청을 구문 분석하고 인수를 추출한 다음 모든 것을 인코딩하는 것입니다. 이러한 단계는 모두 상호작용하는 인터페이스 내에서 사용자 측에서 이루어집니다.
+
+### Encoding
+
+이 경우(주소의 위임을 쿼리하는 경우)에는 MyQuery에 주소 delegatorAddress가 유일한 인자로 포함됩니다. 그러나 요청은 애플리케이션 유형에 대한 고유한 지식이 없는 풀노드의 합의 엔진(예: CometBFT)으로 최종적으로 전달되기 때문에 []바이트만 포함할 수 있습니다. 따라서 클라이언트.컨텍스트의 코덱은 주소를 마샬링하는 데 사용됩니다. 다음은 CLI 명령의 코드입니다:
+
+x/staking/client/cli/query.go
+
+```
+_, err = ac.StringToBytes(args[0])
+if err != nil {
+	return err
+}
+```
+
+### gRPC Query Client Creation
+
+코스모스 SDK는 프로토부프 서비스에서 생성된 코드를 활용하여 쿼리를 생성합니다. 스테이킹 모듈의 MyQuery 서비스는 CLI가 쿼리를 생성하는 데 사용하는 쿼리클라이언트를 생성합니다. 관련 코드는 다음과 같습니다:
+
+x/staking/client/cli/query.go
+
+```
+		RunE: func(cmd *cobra.Command, args []string) error {
+			clientCtx, err := client.GetClientQueryContext(cmd)
+			if err != nil {
+				return err
+			}
+			queryClient := types.NewQueryClient(clientCtx)
+
+			_, err = ac.StringToBytes(args[0])
+			if err != nil {
+				return err
+			}
+
+			pageReq, err := client.ReadPageRequest(cmd.Flags())
+			if err != nil {
+				return err
+			}
+
+			params := &types.QueryDelegatorDelegationsRequest{
+				DelegatorAddr: args[0],
+				Pagination:    pageReq,
+			}
+
+			res, err := queryClient.DelegatorDelegations(cmd.Context(), params)
+			if err != nil {
+				return err
+			}
+
+			return clientCtx.PrintProto(res)
+		},
+	}
+
+	flags.AddQueryFlagsToCmd(cmd)
+	flags.AddPaginationFlagsToCmd(cmd, "delegations")
+
+	return cmd
+}
+```
+
+내부적으로 client.Context에는 미리 구성된 노드를 검색하고 쿼리를 전달하는 데 사용되는 Query() 함수가 있으며, 이 함수는 쿼리 정규화된 서비스 메서드 이름을 경로(이 경우: /cosmos.staking.v1beta1.Query/Delegations)로, 인수를 파라미터로 받습니다. 먼저 사용자가 이 쿼리를 전달하도록 구성한 RPC 클라이언트(노드라고 함)를 검색하고 ABCIQueryOptions(ABCI 호출을 위해 형식이 지정된 매개변수)를 생성합니다. 그런 다음 이 노드를 사용하여 ABCI 호출인 ABCIQueryWithOptions()를 실행합니다. 코드의 모습은 다음과 같습니다:
+
+client/query.go
+
+```
+func (ctx Context) queryABCI(req abci.RequestQuery) (abci.ResponseQuery, error) {
+	node, err := ctx.GetNode()
+	if err != nil {
+		return abci.ResponseQuery{}, err
+	}
+
+	var queryHeight int64
+	if req.Height != 0 {
+		queryHeight = req.Height
+	} else {
+		// fallback on the context height
+		queryHeight = ctx.Height
+	}
+
+	opts := rpcclient.ABCIQueryOptions{
+		Height: queryHeight,
+		Prove:  req.Prove,
+	}
+
+	result, err := node.ABCIQueryWithOptions(context.Background(), req.Path, req.Data, opts)
+	if err != nil {
+		return abci.ResponseQuery{}, err
+	}
+
+	if !result.Response.IsOK() {
+		return abci.ResponseQuery{}, sdkErrorToGRPCError(result.Response)
+	}
+
+	// data from trusted node or subspace query doesn't need verification
+	if !opts.Prove || !isQueryStoreWithProof(req.Path) {
+		return result.Response, nil
+	}
+
+	return result.Response, nil
+}
+```
+
+## RPC
+
+ABCIQueryWithOptions()를 호출하면 풀 노드가 MyQuery를 수신한 다음 요청을 처리합니다. RPC는 풀노드의 합의 엔진(예: CometBFT)으로 이루어지지만 쿼리는 합의의 일부가 아니므로 네트워크가 합의할 필요가 없으므로 나머지 네트워크에 브로드캐스트되지 않습니다. ABCI 클라이언트 및 CometBFT RPC에 대한 자세한 내용은 CometBFT 문서를 참조하세요.
+
+## Application Query Handling
+
+쿼리가 기본 합의 엔진에서 릴레이된 후 풀 노드에서 수신되면, 그 시점에서 애플리케이션별 유형을 이해하고 상태의 복사본을 가진 환경 내에서 처리됩니다. baseapp은 ABCI Query() 함수를 구현하고 gRPC 쿼리를 처리합니다. 쿼리 경로가 구문 분석되고 기존 서비스 메서드의 정규화된 서비스 메서드 이름(대부분 모듈 중 하나에 있음)과 일치하면 baseapp은 요청을 관련 모듈로 전달합니다.
+
+MyQuery에는 스테이킹 모듈의 Protobuf 정규화된 서비스 메서드 이름이 있으므로(/cosmos.staking.v1beta1.Query/Delegations 호출), baseapp은 먼저 경로를 파싱한 다음 자체 내부 GRPCQueryRouter를 사용하여 해당 gRPC 핸들러를 검색하고 해당 모듈로 쿼리를 라우팅합니다. gRPC 처리기는 이 쿼리를 인식하고 애플리케이션의 스토어에서 적절한 값을 검색하여 응답을 반환하는 역할을 담당합니다. 쿼리 서비스에 대한 자세한 내용은 여기를 참조하세요. 쿼리자로부터 결과를 받으면 baseapp은 사용자에게 응답을 반환하는 프로세스를 시작합니다.
+
+## Response
+
+Query()는 ABCI 함수이므로 baseapp은 응답을 abci.ResponseQuery 유형으로 반환합니다. 클라이언트.컨텍스트 쿼리() 루틴은 응답을 수신하고.
+
+### CLI Response
+
+애플리케이션 코덱은 응답을 JSON으로 마샬링 해제하는 데 사용되며, client.Context는 출력 유형(텍스트, JSON 또는 YAML)과 같은 구성을 적용하여 명령줄에 출력을 인쇄합니다.
+
+client/context.go
+
+```
+func (ctx Context) printOutput(out []byte) error {
+	var err error
+	if ctx.OutputFormat == "text" {
+		out, err = yaml.JSONToYAML(out)
+		if err != nil {
+			return err
+		}
+	}
+```
+
+link : https://github.com/cosmos/cosmos-sdk/blob/v0.50.0-alpha.0/client/context.go#L341-L349
