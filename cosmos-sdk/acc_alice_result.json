@@ -1,0 +1,12 @@
+
+- name: alice
+  type: local
+  address: cosmos1yefhl7f4qe2ham8cph02m9znl38sr2x58dqgqe
+  pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"A9LrjYpSywY7W3Mo6h6rZH13i3ItD/CHTPxFYh819oMD"}'
+  mnemonic: ""
+
+
+**Important** write this mnemonic phrase in a safe place.
+It is the only way to recover your account if you ever forget your password.
+
+broom cousin notable grunt tonight inside dwarf forum guess stumble alone reveal coral purchase comfort bomb diamond arrow gown hungry clip home voyage require

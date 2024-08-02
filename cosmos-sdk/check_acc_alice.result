@@ -1,0 +1,6 @@
+- name: alice
+  type: local
+  address: cosmos1yefhl7f4qe2ham8cph02m9znl38sr2x58dqgqe
+  pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"A9LrjYpSywY7W3Mo6h6rZH13i3ItD/CHTPxFYh819oMD"}'
+  mnemonic: ""
+
