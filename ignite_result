@@ -1,0 +1,21 @@
+ignite chain serve
+
+  Blockchain is running
+  
+  ✔ Added account alice with address cosmos13q9e64zptftru5aaeaav8qxkv7zefmjcntdx4a and mnemonic:
+    move hotel steak phone latin mother question video rent notable type brass   
+    dilemma novel prison fantasy bottom tonight stadium hand fluid muscle tornado
+    trip                                                                         
+  
+  ✔ Added account bob with address cosmos1k0wr860934m8nzm8c3893ndvgzm4ftp575pytl and mnemonic:
+    shuffle tray able praise injury mean bachelor initial noodle rude poet grace
+    frown engage tell hotel session patch meat hair top focus lake hard         
+  
+  🌍 Tendermint node: http://0.0.0.0:26657
+  🌍 Blockchain API: http://0.0.0.0:1317
+  🌍 Token faucet: http://0.0.0.0:4500
+  
+  ⋆ Data directory: /home/inno-robert/.ludiumapp2
+  ⋆ App binary: /data/golang/bin/ludiumapp2d
+  
+  Press the 'q' key to stop serve

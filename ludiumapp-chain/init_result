@@ -1,0 +1,59 @@
++ NODE_DAEMON=ludiumappd
++ NODE_DENOM=stake
++ rm -r /home/inno-robert/.ludiumchain
+rm: '/home/inno-robert/.ludiumchain'를 지울 수 없음: 그런 파일이나 디렉터리가 없습니다
++ true
+++ which ludiumappd
++ NODE_DAEMON=/data/golang/bin/ludiumappd
++ echo '=== this init script for cosmos-sdk v0.45.4 ==='
+=== this init script for cosmos-sdk v0.45.4 ===
++ echo
+
++ /data/golang/bin/ludiumappd config chain-id demo
++ /data/golang/bin/ludiumappd config keyring-backend test
++ echo '=== create alice account ==='
+=== create alice account ===
++ /data/golang/bin/ludiumappd keys add alice
+
+- name: alice
+  type: local
+  address: cosmos18cyfukdtx2ulxyvhvywh0ev5lkkj6wyn629ymr
+  pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Av9Q+vE2xtquabP7t6u7pRWV9C5KXiy+8Gp5w/kKDMNZ"}'
+  mnemonic: ""
+
+
+**Important** write this mnemonic phrase in a safe place.
+It is the only way to recover your account if you ever forget your password.
+
+flag merry drink rigid faint punch mandate viable order word setup critic can toast sick toward claim worth lizard hover that uncle rule chat
++ echo '=== create bob account ==='
+=== create bob account ===
++ /data/golang/bin/ludiumappd keys add bob
+
+- name: bob
+  type: local
+  address: cosmos19zzhsc8688kxfv9f4rkmfuky5y2dxc6sk2m0dl
+  pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Aww3C1MCZigtbadrf4I+G1jeORznFq8DkYgYEgFFkNtn"}'
+  mnemonic: ""
+
+
+**Important** write this mnemonic phrase in a safe place.
+It is the only way to recover your account if you ever forget your password.
+
+switch puzzle chunk parrot menu goose primary borrow when piano mobile business ozone flat brain ship hazard limit era harsh daring hobby since bench
++ echo '=== init chain ==='
+=== init chain ===
++ /data/golang/bin/ludiumappd init testmoniker --chain-id demo
+{"app_message":{"auth":{"accounts":[],"params":{"max_memo_characters":"256","sig_verify_cost_ed25519":"590","sig_verify_cost_secp256k1":"1000","tx_sig_limit":"7","tx_size_cost_per_byte":"10"}},"authz":{"authorization":[]},"bank":{"balances":[],"denom_metadata":[],"params":{"default_send_enabled":true,"send_enabled":[]},"supply":[]},"capability":{"index":"1","owners":[]},"crisis":{"constant_fee":{"amount":"1000","denom":"stake"}},"distribution":{"delegator_starting_infos":[],"delegator_withdraw_infos":[],"fee_pool":{"community_pool":[]},"outstanding_rewards":[],"params":{"base_proposer_reward":"0.010000000000000000","bonus_proposer_reward":"0.040000000000000000","community_tax":"0.020000000000000000","withdraw_addr_enabled":true},"previous_proposer":"","validator_accumulated_commissions":[],"validator_current_rewards":[],"validator_historical_rewards":[],"validator_slash_events":[]},"evidence":{"evidence":[]},"feegrant":{"allowances":[]},"genutil":{"gen_txs":[]},"gov":{"deposit_params":{"max_deposit_period":"172800s","min_deposit":[{"amount":"10000000","denom":"stake"}]},"deposits":[],"proposals":[],"starting_proposal_id":"1","tally_params":{"quorum":"0.334000000000000000","threshold":"0.500000000000000000","veto_threshold":"0.334000000000000000"},"votes":[],"voting_params":{"voting_period":"172800s"}},"mint":{"minter":{"annual_provisions":"0.000000000000000000","inflation":"0.130000000000000000"},"params":{"blocks_per_year":"6311520","goal_bonded":"0.670000000000000000","inflation_max":"0.200000000000000000","inflation_min":"0.070000000000000000","inflation_rate_change":"0.130000000000000000","mint_denom":"stake"}},"nameservice":{"params":{},"whoisList":[]},"params":null,"slashing":{"missed_blocks":[],"params":{"downtime_jail_duration":"600s","min_signed_per_window":"0.500000000000000000","signed_blocks_window":"100","slash_fraction_double_sign":"0.050000000000000000","slash_fraction_downtime":"0.010000000000000000"},"signing_infos":[]},"staking":{"delegations":[],"exported":false,"last_total_power":"0","last_validator_powers":[],"params":{"bond_denom":"stake","historical_entries":10000,"max_entries":7,"max_validators":100,"unbonding_time":"1814400s"},"redelegations":[],"unbonding_delegations":[],"validators":[]},"upgrade":{},"vesting":{}},"chain_id":"demo","gentxs_dir":"","moniker":"testmoniker","node_id":"20576b5a77ee272e2135193b9cc80b012f85963b"}
++ echo '=== add genesis account for alice ==='
+=== add genesis account for alice ===
++ /data/golang/bin/ludiumappd add-genesis-account alice 100000000stake --keyring-backend test
++ /data/golang/bin/ludiumappd add-genesis-account bob 100000000stake --keyring-backend test
++ echo '=== gentx for alice validator ==='
+=== gentx for alice validator ===
++ /data/golang/bin/ludiumappd gentx alice 10000000stake --chain-id demo
+Genesis transaction written to "/home/inno-robert/.ludiumchain/config/gentx/gentx-20576b5a77ee272e2135193b9cc80b012f85963b.json"
++ echo '=== collect gentxs ==='
+=== collect gentxs ===
++ /data/golang/bin/ludiumappd collect-gentxs
+{"app_message":{"auth":{"accounts":[{"@type":"/cosmos.auth.v1beta1.BaseAccount","account_number":"0","address":"cosmos18cyfukdtx2ulxyvhvywh0ev5lkkj6wyn629ymr","pub_key":null,"sequence":"0"},{"@type":"/cosmos.auth.v1beta1.BaseAccount","account_number":"0","address":"cosmos19zzhsc8688kxfv9f4rkmfuky5y2dxc6sk2m0dl","pub_key":null,"sequence":"0"}],"params":{"max_memo_characters":"256","sig_verify_cost_ed25519":"590","sig_verify_cost_secp256k1":"1000","tx_sig_limit":"7","tx_size_cost_per_byte":"10"}},"authz":{"authorization":[]},"bank":{"balances":[{"address":"cosmos19zzhsc8688kxfv9f4rkmfuky5y2dxc6sk2m0dl","coins":[{"amount":"100000000","denom":"stake"}]},{"address":"cosmos18cyfukdtx2ulxyvhvywh0ev5lkkj6wyn629ymr","coins":[{"amount":"100000000","denom":"stake"}]}],"denom_metadata":[],"params":{"default_send_enabled":true,"send_enabled":[]},"supply":[{"amount":"200000000","denom":"stake"}]},"capability":{"index":"1","owners":[]},"crisis":{"constant_fee":{"amount":"1000","denom":"stake"}},"distribution":{"delegator_starting_infos":[],"delegator_withdraw_infos":[],"fee_pool":{"community_pool":[]},"outstanding_rewards":[],"params":{"base_proposer_reward":"0.010000000000000000","bonus_proposer_reward":"0.040000000000000000","community_tax":"0.020000000000000000","withdraw_addr_enabled":true},"previous_proposer":"","validator_accumulated_commissions":[],"validator_current_rewards":[],"validator_historical_rewards":[],"validator_slash_events":[]},"evidence":{"evidence":[]},"feegrant":{"allowances":[]},"genutil":{"gen_txs":[{"auth_info":{"fee":{"amount":[],"gas_limit":"200000","granter":"","payer":""},"signer_infos":[{"mode_info":{"single":{"mode":"SIGN_MODE_DIRECT"}},"public_key":{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"Av9Q+vE2xtquabP7t6u7pRWV9C5KXiy+8Gp5w/kKDMNZ"},"sequence":"0"}]},"body":{"extension_options":[],"memo":"20576b5a77ee272e2135193b9cc80b012f85963b@192.168.5.83:26656","messages":[{"@type":"/cosmos.staking.v1beta1.MsgCreateValidator","commission":{"max_change_rate":"0.010000000000000000","max_rate":"0.200000000000000000","rate":"0.100000000000000000"},"delegator_address":"cosmos18cyfukdtx2ulxyvhvywh0ev5lkkj6wyn629ymr","description":{"details":"","identity":"","moniker":"testmoniker","security_contact":"","website":""},"min_self_delegation":"1","pubkey":{"@type":"/cosmos.crypto.ed25519.PubKey","key":"Sn8tr84zSPDqxISJ0vpL/rpz+60B0HRFTWFbKuBfH94="},"validator_address":"cosmosvaloper18cyfukdtx2ulxyvhvywh0ev5lkkj6wynl733hs","value":{"amount":"10000000","denom":"stake"}}],"non_critical_extension_options":[],"timeout_height":"0"},"signatures":["7lwj6LPmOaiP8sGzsGZdJBKI8KEwqpJMG2MU4jWpEBpzwI2OtkD5pdcGLFr7pbjCkfH0IaEHmONpSvLX2YR34Q=="]}]},"gov":{"deposit_params":{"max_deposit_period":"172800s","min_deposit":[{"amount":"10000000","denom":"stake"}]},"deposits":[],"proposals":[],"starting_proposal_id":"1","tally_params":{"quorum":"0.334000000000000000","threshold":"0.500000000000000000","veto_threshold":"0.334000000000000000"},"votes":[],"voting_params":{"voting_period":"172800s"}},"mint":{"minter":{"annual_provisions":"0.000000000000000000","inflation":"0.130000000000000000"},"params":{"blocks_per_year":"6311520","goal_bonded":"0.670000000000000000","inflation_max":"0.200000000000000000","inflation_min":"0.070000000000000000","inflation_rate_change":"0.130000000000000000","mint_denom":"stake"}},"nameservice":{"params":{},"whoisList":[]},"params":null,"slashing":{"missed_blocks":[],"params":{"downtime_jail_duration":"600s","min_signed_per_window":"0.500000000000000000","signed_blocks_window":"100","slash_fraction_double_sign":"0.050000000000000000","slash_fraction_downtime":"0.010000000000000000"},"signing_infos":[]},"staking":{"delegations":[],"exported":false,"last_total_power":"0","last_validator_powers":[],"params":{"bond_denom":"stake","historical_entries":10000,"max_entries":7,"max_validators":100,"unbonding_time":"1814400s"},"redelegations":[],"unbonding_delegations":[],"validators":[]},"upgrade":{},"vesting":{}},"chain_id":"demo","gentxs_dir":"/home/inno-robert/.ludiumchain/config/gentx","moniker":"testmoniker","node_id":"20576b5a77ee272e2135193b9cc80b012f85963b"}
