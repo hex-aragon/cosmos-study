@@ -105,13 +105,13 @@ import (
 
 	// this line is used by starport scaffolding # stargate/app/moduleImport
 
-	appparams "ludiumapp2/app/params"
-	"ludiumapp2/docs"
+	appparams "robertapp2/app/params"
+	"robertapp2/docs"
 )
 
 const (
 	AccountAddressPrefix = "cosmos"
-	Name                 = "robertapp"
+	Name                 = "robertapp2"
 )
 
 // this line is used by starport scaffolding # stargate/wasm/app/enabledProposals
