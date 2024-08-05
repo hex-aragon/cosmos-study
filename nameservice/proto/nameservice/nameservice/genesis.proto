@@ -1,0 +1,12 @@
+syntax = "proto3";
+package nameservice.nameservice;
+
+import "gogoproto/gogo.proto";
+import "nameservice/nameservice/params.proto";
+
+option go_package = "nameservice/x/nameservice/types";
+
+// GenesisState defines the nameservice module's genesis state.
+message GenesisState {
+  Params params = 1 [(gogoproto.nullable) = false];
+}
