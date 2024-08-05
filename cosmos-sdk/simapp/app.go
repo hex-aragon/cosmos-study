@@ -145,6 +145,11 @@ type SimApp struct {
 
 	invCheckPeriod uint
 
+	// 	keys : 영구적인 키-값 저장소, 각각의 키에 대응하는 값은 sdk.KVStoreKey 타입의 포인터
+	// tkeys: 블록마다 일시적으로 저장하는 키-값 저장소, baseapp의 CommitTransientStore에서 사용
+	// memkeys : 메모리 기반의 키-값 저장소, 주로 baseapp의 CommitKVStore에서 사용
+
+
 	// keys to access the substores
 	keys    map[string]*sdk.KVStoreKey
 	tkeys   map[string]*sdk.TransientStoreKey
