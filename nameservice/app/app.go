@@ -105,14 +105,13 @@ import (
 
 	// this line is used by starport scaffolding # stargate/app/moduleImport
 
-	appparams "robertapp2/app/params"
-	"robertapp2/docs"
+	appparams "nameservice/app/params"
+	"nameservice/docs"
 )
 
 const (
-	//계정 주소 prefix 
-	AccountAddressPrefix = "robert"
-	Name                 = "robertapp2"
+	AccountAddressPrefix = "cosmos"
+	Name                 = "nameservice"
 )
 
 // this line is used by starport scaffolding # stargate/wasm/app/enabledProposals
