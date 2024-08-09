@@ -1,0 +1,10 @@
+{
+ "title": "Test Proposal",
+ "authors": [
+  "Alice"
+ ],
+ "summary": "A test proposal with simapp",
+ "details": "-",
+ "proposal_forum_url": "https://example.org/proposal/1",
+ "vote_option_context": "YES: XX, NO: YX, ABSTAIN: XY, NO_WITH_VETO: YY"
+}
