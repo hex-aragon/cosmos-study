@@ -1,0 +1,17 @@
+dk$ ./simd-proposal.sh 
+{"body":{"messages":[{"@type":"/cosmos.gov.v1beta1.MsgSubmitProposal","content":{"@type":"/cosmos.gov.v1beta1.TextProposal","title":"Test Authorization","description":"Is Bob authorized to vote?"},"initial_deposit":[{"denom":"stake","amount":"10000000"}],"proposer":"cosmos19r29s0rufxkvv8vcw8flnjpwnws0ddk0dm758d"}],"memo":"","timeout_height":"0","extension_options":[],"non_critical_extension_options":[]},"auth_info":{"signer_infos":[],"fee":{"amount":[],"gas_limit":"200000","payer":"","granter":""}},"signatures":[]}
+
+confirm transaction before signing and broadcasting [y/N]: y
+code: 0
+codespace: ""
+data: ""
+events: []
+gas_used: "0"
+gas_wanted: "0"
+height: "0"
+info: ""
+logs: []
+raw_log: '[]'
+timestamp: ""
+tx: null
+txhash: 4ECF93EA43CDA3C6D1D3761AEF44CB3DA89DC497582564192782A79157971672

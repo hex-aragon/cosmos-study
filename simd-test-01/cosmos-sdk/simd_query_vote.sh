@@ -1,0 +1,1 @@
+simd query gov vote 1 $ALICE

@@ -1,0 +1,1 @@
+ simd tx authz exec tx.json --from bob

@@ -1,0 +1,26 @@
+  simd keys add alice 
+
+- name: alice
+  type: local
+  address: cosmos19r29s0rufxkvv8vcw8flnjpwnws0ddk0dm758d
+  pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"A8twat39hDer3Ql+z10aeEI9c2o6a5bsYAaDutM0u/6D"}'
+  mnemonic: ""
+
+
+**Important** write this mnemonic phrase in a safe place.
+It is the only way to recover your account if you ever forget your password.
+
+wife add unique flower afraid legal invest siege fuel credit morning document day flush prize garment produce grass age clean wasp notice improve frog
+inno-robert@innorobert-ThinkPad-E15-Gen-4:/data/work/cosmos-study/simd-test-01/cosmos-sdk$ simd keys add bob 
+
+- name: bob
+  type: local
+  address: cosmos1x59nxkeksxjc3qgddpygaf5k4ajx6gqu8f2fx6
+  pubkey: '{"@type":"/cosmos.crypto.secp256k1.PubKey","key":"A27wp0j1uOcAlfnV/877aqpCZ/+vUaBzpJvHfEatF3ZG"}'
+  mnemonic: ""
+
+
+**Important** write this mnemonic phrase in a safe place.
+It is the only way to recover your account if you ever forget your password.
+
+wolf blue hawk slab black boss practice royal piano secret hello inhale chair where captain duty pipe cricket woman brain plate erupt verify obey

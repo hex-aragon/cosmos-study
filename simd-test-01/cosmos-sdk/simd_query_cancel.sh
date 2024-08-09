@@ -1,0 +1,1 @@
+simd tx authz revoke $BOB /cosmos.gov.v1beta1.MsgVote --from alice
